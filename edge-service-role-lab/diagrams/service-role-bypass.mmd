@@ -1,0 +1,14 @@
+flowchart TD
+
+U[User A] --> E[Edge Function]
+
+E --> K{Which key is used?}
+
+K -->|service_role| DB1[Supabase DB]
+DB1 --> R1[RLS bypassed]
+R1 --> L1[All family posts returned]
+L1 --> LEAK[Data leak]
+
+K -->|anon + user JWT| DB2[Supabase DB]
+DB2 --> R2[RLS applied]
+R2 --> SAFE[Only user's family rows]
