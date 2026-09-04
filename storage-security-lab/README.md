@@ -1,47 +1,33 @@
 # Storage Security Lab
 
-This lab demonstrates secure and insecure patterns when using Supabase Storage in a multi-tenant application.
+This lab examines secure and insecure Supabase Storage patterns in a multi-tenant application.
 
-The example model uses a **family-based tenant structure** where users belong to families and each family has its own storage namespace.
+The example uses families as tenant boundaries. Each family has its own Storage namespace, and membership determines access.
 
----
+## Security goal
 
-## Goals
+A user must be able to list, upload, download, or delete objects only inside a family to which that user belongs.
 
-This lab demonstrates:
-
-- how to design safe Storage policies
-- how to organize object paths for multi-tenant isolation
-- how membership tables are used to enforce file access
-- how signed URL generation can accidentally bypass security
-
----
-
-## Model
-
-The storage bucket is **private** and object paths follow this pattern:
+The private bucket uses tenant-scoped object paths:
 
 ```text
 <family_id>/<filename>
 ```
+
 Example:
 
 ```text
 ce5693c5-71c8-4d49-b5bf-44bd1d53c99d/photo1.jpg
 ```
 
+Authorization depends on:
 
-Access to files is controlled through:
+- the caller identity from `auth.uid()`;
+- membership rows in `family_members`;
+- Storage policies that validate the first path segment;
+- trusted server-side handling of signed URLs.
 
-- `family_members`
-- `auth.uid()`
-- storage policies
-
----
-
-## Scenarios
-
-### Scenario 1 – Bucket membership isolation
+## Scenario 1: Bucket membership isolation
 
 Documented in:
 
@@ -49,20 +35,23 @@ Documented in:
 docs/scenario_1_bucket_membership.md
 ```
 
+The protected design uses:
 
-Demonstrates the correct approach:
-
-- private bucket
-- path-based tenant boundary
-- membership validation
+- a private bucket;
+- a tenant identifier in the object path;
+- membership checks for Storage operations;
+- RLS on the membership tables used as the authorization source.
 
 Expected result:
 
-Users can access only files belonging to their own family.
+- User A can access objects under Family A.
+- User A cannot access objects under Family B.
+- User B can access objects under Family B.
+- User B cannot access objects under Family A.
 
----
+The initial Storage migration defines tenant-scoped object policies. The later hardening migration enables RLS on `families` and `family_members`, preventing clients from directly changing the authorization source.
 
-### Scenario 2 – Signed URL leak
+## Scenario 2: Signed URL leak
 
 Documented in:
 
@@ -70,23 +59,33 @@ Documented in:
 docs/scenario_2_signed_url_leak.md
 ```
 
+A server-side function that uses `service_role` can generate a signed URL for any object. If it accepts a path without validating the caller's tenant membership, a user may receive a valid URL for another tenant's file.
 
-Demonstrates a common mistake:
+This scenario is documentation-only in the current repository. It explains the authorization gap but does not include a deployable vulnerable Edge Function.
 
-An Edge Function generates signed URLs using `service_role` without validating ownership.
+## Included material
 
-Result:
+- `supabase/migrations/20260308013100_add_family_storage_rls.sql` defines the tenant model and Storage policies.
+- `supabase/migrations/20260904090000__protect_membership_source.sql` protects the membership tables on which authorization depends.
+- `scripts/login.sh` obtains a user access token.
+- `scripts/test-storage-family.sh` exercises same-tenant and cross-tenant requests.
+- `seed.sql` provides deterministic family IDs with test-user placeholders.
 
-A user can receive a valid signed URL for another tenant's file.
+## Lab status
 
----
+Replace the UUID placeholders in `seed.sql` with disposable test-user IDs before applying it.
 
-## Key Idea
+The repository includes policy migrations and a two-user request script, but it is not a one-command environment setup. The scripts print HTTP responses for inspection; they do not currently provide automated pass/fail assertions.
 
-Supabase Storage security relies on three layers:
+Use only a disposable local or test project.
 
-1. Private buckets
-2. Storage policies
-3. Correct Edge Function design
+## Key lesson
 
-If any of these layers is misconfigured, cross-tenant data leaks can occur.
+A private bucket alone does not enforce tenant isolation.
+
+Storage security depends on all of the following remaining correct:
+
+1. object-path design;
+2. Storage policies;
+3. protection of the membership data used by those policies;
+4. authorization checks before privileged signed-URL generation.
