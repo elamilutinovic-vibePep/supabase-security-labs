@@ -8,7 +8,7 @@ It provides context for continuing development or discussion in a new session.
 
 # Project Goal
 
-The repository is a collection of **small, reproducible security labs** demonstrating common Supabase security patterns, mistakes and debugging workflows.
+The repository is a collection of **small, documented security case studies** demonstrating common Supabase security patterns, mistakes and debugging workflows.
 
 The labs focus on:
 

@@ -228,7 +228,7 @@ Included labs cover:
 - storage policy design
 - signed URL leak scenarios
 
-These labs are intentionally small and reproducible to help developers understand how security issues appear in real systems.
+These labs are intentionally small and focused to help developers understand how security issues appear in real systems.
 
 ---
 
