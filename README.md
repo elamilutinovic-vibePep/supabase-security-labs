@@ -30,13 +30,11 @@ This is a technical case-study repository, not a production application or autom
 ## Central security model
 
 ```mermaid
-flowchart TD
-  Client[Client application] --> Auth[Supabase Auth]
-  Auth --> JWT[User JWT]
-  JWT --> API[PostgREST or Edge Function]
-  API --> DB[(PostgreSQL)]
-  DB --> RLS[Row Level Security]
-  RLS --> Tenant[Tenant-owned data]
+flowchart LR
+  Client["Client application"] --> Auth["Supabase Auth + user JWT"]
+  Auth --> API["PostgREST or Edge Function"]
+  API --> DB["PostgreSQL + RLS"]
+  DB --> Tenant["Tenant-owned data"]
 ```
 
 Authentication identifies the caller. RLS decides which rows that caller may access. An Edge Function that replaces the caller context with `service_role` bypasses that protection and must enforce authorization itself.
